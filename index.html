@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>电子健康证编辑器</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="format-detection" content="telephone=no">
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    html { font-size: 16px; }
+    html, body { margin: 0 auto; }
+    .fc { color: rgb(4,4,130); font-weight: bold; font-size: 14px; }
+    .f1 { color: #000; font-weight: bold; font-size: 14px; text-decoration: none; }
+    .dis { display: flex; justify-content: space-between; }
+    .error { color: red; font-weight: bold; }
+    .editor-container { 
+      margin: 20px auto; 
+      padding: 20px; 
+      background: #F8F8F8; 
+      border-radius: 10px; 
+      max-width: 800px;
+    }
+    .form-group { 
+      margin-bottom: 15px; 
+    }
+    label { 
+      display: block; 
+      margin-bottom: 5px; 
+      font-weight: bold;
+    }
+    input, select { 
+      width: 100%; 
+      padding: 8px; 
+      border: 1px solid #ccc; 
+      border-radius: 4px; 
+    }
+    button { 
+      background-color: #4CAF50; 
+      color: white; 
+      padding: 10px 15px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      margin-right: 10px;
+    }
+    button:hover { 
+      background-color: #45a049; 
+    }
+    .image-upload { 
+      margin-top: 10px; 
+    }
+    .image-controls { 
+      margin-top: 10px; 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px;
+    }
+    .image-controls input { 
+      width: 60px; 
+    }
+    .tab-container { 
+      display: flex; 
+      margin-bottom: 20px;
+    }
+    .tab { 
+      padding: 10px 20px; 
+      background: #ddd; 
+      cursor: pointer; 
+      margin-right: 5px;
+    }
+    .tab.active { 
+      background: #4CAF50; 
+      color: white;
+    }
+    .tab-content { 
+      display: none;
+    }
+    .tab-content.active { 
+      display: block;
+    }
+    #preview-container { 
+      margin-top: 30px; 
+      text-align: center;
+    }
+    .name-input-group {
+      display: flex;
+      gap: 10px;
+    }
+    .name-input-group input {
+      flex: 1;
+    }
+    .name-input-group button {
+      width: auto;
+      padding: 8px 12px;
+    }
+    #cli-im-frame {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+      display: none;
+    }
+    .paste-btn {
+      background-color: #2196F3;
+      margin-top: 5px;
+    }
+    .paste-btn:hover {
+      background-color: #0b7dda;
+    }
+  </style>
+</head>
+<body>
+  <div class="editor-container">
+    <h1 style="text-align: center;">印钞机</h1>
+    
+    <div class="tab-container">
+      <div class="tab active" data-tab="basic">信息</div>
+      <div class="tab" data-tab="images">设置</div>
+      <div class="tab" data-tab="preview">预览</div>
+      <div class="tab" data-tab="cli-im">二维码</div>
+    </div>
+    
+    <div class="tab-content active" id="basic-tab">
+      <div class="form-group">
+        <label for="name">姓名:</label>
+        <div class="name-input-group">
+          <input type="text" id="name" placeholder="请输入姓名">
+          <button id="auto-fill-btn">自动识别</button>
+        </div>
+        <small class="error" id="name-error"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="id-number">身份证号:</label>
+        <input type="text" id="id-number" maxlength="50" placeholder="请输入18位身份证号">
+        <small class="error" id="id-error"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="cert-number">编号:</label>
+        <input type="text" id="cert-number" placeholder="请输入编号">
+      </div>
+      
+      <div class="form-group">
+        <label>个人照片:</label>
+        <input type="file" id="seal-upload" accept="image/*" class="image-upload">
+      </div>
+      
+      <div class="form-group">
+        <label>二维码:</label>
+        <input type="file" id="photo-upload" accept="image/*" class="image-upload">
+        <button class="paste-btn" id="paste-qr-btn">粘贴二维码图片</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="age">年龄:</label>
+        <input type="number" id="age" min="0" max="120">
+      </div>
+      
+      <div class="form-group">
+        <label for="gender">性别:</label>
+        <select id="gender">
+          <option value="男">男</option>
+          <option value="女">女</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="exam-date">体检日期:</label>
+        <input type="date" id="exam-date">
+      </div>
+    </div>
+    
+    <div class="tab-content" id="images-tab">
+      <div class="form-group">
+        <label for="cert-type">健康证类型:</label>
+        <select id="cert-type">
+          <option value="食品健康证">食品健康证</option>
+          <option value="公共场所健康证">公共场所健康证</option>
+          <option value="医药销售健康证">医药销售健康证</option>
+          <option value="供管水健康证">供管水健康证</option>
+          <option value="化妆品生产健康证">化妆品生产健康证</option>
+          <option value="消毒产品生产健康证">消毒产品生产健康证</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>二维码:</label>
+        <div class="image-controls">
+          <div>
+            <label>位置X:</label>
+            <input type="number" id="photo-x" value="0">
+          </div>
+          <div>
+            <label>位置Y:</label>
+            <input type="number" id="photo-y" value="0">
+          </div>
+          <div>
+            <label>宽度:</label>
+            <input type="number" id="photo-width" value="80">
+          </div>
+          <div>
+            <label>高度:</label>
+            <input type="number" id="photo-height" value="auto">
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>印章:</label>
+        <input type="file" id="stamp-upload" accept="image/*" class="image-upload">
+        <div class="image-controls">
+          <div>
+            <label>位置X:</label>
+            <input type="number" id="stamp-x" value="150">
+          </div>
+          <div>
+            <label>位置Y:</label>
+            <input type="number" id="stamp-y" value="0">
+          </div>
+          <div>
+            <label>宽度:</label>
+            <input type="number" id="stamp-width" value="100">
+          </div>
+          <div>
+            <label>高度:</label>
+            <input type="number" id="stamp-height" value="auto">
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>个人照片设置:</label>
+        <div class="image-controls">
+          <div>
+            <label>位置X:</label>
+            <input type="number" id="seal-x" value="12">
+          </div>
+          <div>
+            <label>位置Y:</label>
+            <input type="number" id="seal-y" value="10">
+          </div>
+          <div>
+            <label>宽度:</label>
+            <input type="number" id="seal-width" value="80">
+          </div>
+          <div>
+            <label>高度:</label>
+            <input type="number" id="seal-height" value="auto">
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="preview-tab">
+      <div id="content" style="margin:0 auto;background:#F8F8F8;width:390px;">
+        <div style="background:#fff;margin:0 20px 0;border:2px solid #333;border-radius:14px;">
+          <div style="padding:8px 0;text-align:center;font-size:16px;border-bottom:2px solid rgb(48,42,155)" class="fc">重庆市从业人员健康合格证明</div>
+          <div style="position:relative;z-index:2;padding:0 20px">
+            <div>
+              <div style="padding:10px 0;">
+                <div class="dis" style="width:220px;">
+                  <div>
+                    <span class="fc">类别：</span>
+                    <span class="f1" id="preview-cert-type">食品健康证</span>
+                  </div>
+                  <div>
+                    <span class="fc">性别：</span>
+                    <span class="f1" id="preview-gender">男</span>
+                  </div>
+                </div>    
+                
+                <div class="dis" style="margin:10px 0;width:220px;">
+                  <div>
+                    <span class="fc">姓名：</span>
+                    <span class="f1" id="preview-name">海</span>
+                  </div>
+                  <div>
+                    <span class="fc">年龄：</span>
+                    <span class="f1" id="preview-age">19</span>
+                  </div>
+                </div>
+                <div class="dis">
+                  <div>
+                    <span class="fc">编号：</span>
+                    <span class="f1" id="preview-cert-number">370881200605031531</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;">
+                <img id="preview-photo" src="https://qn-n4-lz02.obs.cn-north-4.myhuaweicloud.com/meiyan-common-img/photo/68a87bfc3dee0a9hcw3mfd3097.jpg" style="width:80px;height:auto;margin-left:-5px">
+                <div style="display:flex;flex-direction: column;justify-content: space-around;margin-left:4px;">
+                  <div>
+                    <span class="fc">体检日期：</span>
+                    <span class="f1" id="preview-exam-date">2025-07-24</span>
+                  </div>
+                  <div>
+                    <span class="fc">有效期一年</span>
+                  </div>
+                  <div>
+                    <span class="fc">身份证号：</span>
+                    <span class="f1" id="preview-id-number">370881200605031531</span>
+                  </div>
+                </div>
+              </div>
+            </div>    
+            <div style="position:absolute;left:150px;bottom:0;z-index:1">
+              <img id="preview-stamp" src="https://qn-n4-lz02.obs.cn-north-4.myhuaweicloud.com/meiyan-common-img/photo/68a87cb51c0c6k83aln03k5937.jpg" style="width:100px;height:auto">
+            </div>
+            <div style="position:absolute;right:12px;top:10px;z-index:1">
+              <img id="preview-seal" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0BveD0iMCAwIDgwIDgwIj48Y2lyY2xlIGN4PSI0MCIgY3k9IjQwIiByPSIzNSIgc3Ryb2tlPSIjMDAwMGI1IiBzdHJva2Utd2lkdGg9IjIiIGZpbGw9Im5vbmUiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzAwMDBiNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjgiPlNlYWwgUGxhY2Vob2xkZXI8L3RleHQ+PC9zdmc+" style="width:80px;height:auto">
+            </div>
+          </div>
+          <div style="width:100%;height:2px;background:rgb(48,42,155);margin-bottom:2px;"></div>
+          <div style="padding:6px 0;text-align:center;font-size:13px;border-bottom:2px solid rgb(48,42,155);color:#fff;background:rgb(41,45,153);border-radius:0 0 12px 12px">发证机构：垫江县桂阳社区卫生服务中心</div>
+        </div>
+        
+        <div style="background:#fff;margin:20px;border:2px solid #333;border-radius:14px;">
+          <div style="padding:8px 0;text-align:center;font-size:16px;border-bottom:2px solid rgb(48,42,155)" class="fc">健康合格证说明</div>
+          <div style="position:relative;z-index:2;padding:0 20px">
+            <div>
+              <span class="fc">检查依据:</span>
+              <span style="color:#000;font-size:12px">《中华人民共和国食品安全法》、《公共场所卫生管理条例实施细则》、《生活饮用水卫生监督管理办法》《化妆品卫生监督条例》、《中华人民共和国药品管理法》《消毒理办法》等</span>
+            </div>
+            <div>
+              <span class="fc">适用范围:</span>
+              <span style="color:#000;font-size:12px"> 食品生产经营、公共场所、医药销售、供管水、化妆品生产和消毒产品生产等从业人员。</span>
+            </div>
+            <div>
+              <div class="fc">提示:</div>
+              <div style="color:#000;font-size:12px"> 1、本证本市范围有效，请随身携带以备监督部门检查</div>
+              <div style="color:#000;font-size:12px"> 2、再次体检换证请在本证期满前及时办理，过期无效</div>
+            </div>
+          </div>
+          <div style="width:100%;height:2px;background:rgb(48,42,155);margin-bottom:2px;"></div>
+          <div style="display:flex;justify-content: space-between;padding:6px 0;text-align:center;font-size:13px;border-bottom:2px solid rgb(48,42,155);color:#fff;background:rgb(41,45,153);border-radius:0 0 12px 12px">
+            <span></span>
+            <span style="margin-right:10px;">垫江县桂阳社区卫生服务中心</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tab-content" id="cli-im-tab">
+      <iframe id="cli-im-frame" src="https://cli.im" frameborder="0"></iframe>
+      <div class="form-group">
+        <label>或者从剪贴板粘贴二维码图片:</label>
+        <button class="paste-btn" id="paste-qr-btn-2">粘贴二维码图片</button>
+        <div id="pasted-qr-container" style="margin-top: 10px; display: none;">
+          <img id="pasted-qr-image" style="max-width: 200px; max-height: 200px;">
+          <button class="paste-btn" id="use-pasted-qr-btn" style="margin-top: 10px;">使用此二维码</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      // 标签切换功能
+      $('.tab').click(function() {
+        $('.tab').removeClass('active');
+        $(this).addClass('active');
+        
+        $('.tab-content').removeClass('active');
+        $('#' + $(this).data('tab') + '-tab').addClass('active');
+        
+        if ($(this).data('tab') === 'preview') {
+          updatePreview();
+        } else if ($(this).data('tab') === 'cli-im') {
+          $('#cli-im-frame').show();
+        } else {
+          $('#cli-im-frame').hide();
+        }
+      });
+      
+      // 身份证号输入验证和自动计算性别年龄 - 修复后的版本
+      $('#id-number').on('input paste', function(e) {
+        // 处理粘贴事件
+        if (e.type === 'paste') {
+          setTimeout(() => {
+            const idNumber = $(this).val().replace(/[^0-9Xx]/g, '');
+            $(this).val(idNumber);
+            if (idNumber.length === 18) {
+              calculateGenderAndAge(idNumber);
+              // 自动将身份证号同步到编号
+              $('#cert-number').val(idNumber);
+            }
+          }, 0);
+        } else {
+          const idNumber = $(this).val().replace(/[^0-9Xx]/g, '');
+          $(this).val(idNumber);
+          if (idNumber.length === 18) {
+            calculateGenderAndAge(idNumber);
+            // 自动将身份证号同步到编号
+            $('#cert-number').val(idNumber);
+          }
+        }
+      });
+
+      function calculateGenderAndAge(idNumber) {
+        // 计算性别
+        const genderDigit = parseInt(idNumber.charAt(16));
+        const gender = genderDigit % 2 === 1 ? '男' : '女';
+        $('#gender').val(gender);
+        
+        // 计算年龄
+        const birthYear = parseInt(idNumber.substr(6, 4));
+        const birthMonth = parseInt(idNumber.substr(10, 2)) - 1;
+        const birthDay = parseInt(idNumber.substr(12, 2));
+        
+        const today = new Date();
+        const birthDate = new Date(birthYear, birthMonth, birthDay);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        
+        if (today.getMonth() < birthMonth || 
+            (today.getMonth() === birthMonth && today.getDate() < birthDay)) {
+          age--;
+        }
+        
+        $('#age').val(age);
+      }
+      
+      // 姓名输入验证 - 不允许数字和空格
+      $('#name').on('input', function() {
+        const name = $(this).val();
+        $(this).val(name.replace(/[0-9\s]/g, ''));
+      });
+      
+      // 图片上传处理
+      function handleImageUpload(inputId, previewId) {
+        $(inputId).change(function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+              $(previewId).attr('src', event.target.result);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+      
+      handleImageUpload('#photo-upload', '#preview-photo');
+      handleImageUpload('#stamp-upload', '#preview-stamp');
+      handleImageUpload('#seal-upload', '#preview-seal');
+      
+      // 更新预览
+      function updatePreview() {
+        // 基本信息
+        $('#preview-name').text($('#name').val());
+        $('#preview-gender').text($('#gender').val());
+        $('#preview-age').text($('#age').val());
+        $('#preview-cert-number').text($('#cert-number').val());
+        $('#preview-id-number').text($('#id-number').val());
+        $('#preview-exam-date').text($('#exam-date').val());
+        $('#preview-cert-type').text($('#cert-type').val());
+        
+        // 图片位置和大小
+        $('#preview-photo').css({
+          'margin-left': $('#photo-x').val() + 'px',
+          'margin-top': $('#photo-y').val() + 'px',
+          'width': $('#photo-width').val() + 'px',
+          'height': $('#photo-height').val() === 'auto' ? 'auto' : $('#photo-height').val() + 'px'
+        });
+        
+        $('#preview-stamp').css({
+          'left': $('#stamp-x').val() + 'px',
+          'bottom': $('#stamp-y').val() + 'px',
+          'width': $('#stamp-width').val() + 'px',
+          'height': $('#stamp-height').val() === 'auto' ? 'auto' : $('#stamp-height').val() + 'px'
+        });
+        
+        $('#preview-seal').css({
+          'right': $('#seal-x').val() + 'px',
+          'top': $('#seal-y').val() + 'px',
+          'width': $('#seal-width').val() + 'px',
+          'height': $('#seal-height').val() === 'auto' ? 'auto' : $('#seal-height').val() + 'px'
+        });
+      }
+      
+      // 设置默认日期为昨天
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const formattedDate = yesterday.toISOString().substr(0, 10);
+      $('#exam-date').val(formattedDate);
+      $('#preview-exam-date').text(formattedDate);
+      
+      // 自动识别按钮功能
+      $('#auto-fill-btn').click(function() {
+        // 尝试从剪贴板读取内容
+        navigator.clipboard.readText().then(text => {
+          // 尝试提取姓名 - 匹配中文字符
+          const nameMatch = text.match(/[\u4e00-\u9fa5]{2,4}/);
+          if (nameMatch) {
+            $('#name').val(nameMatch[0]);
+          }
+          
+          // 尝试提取身份证号 - 匹配18位数字或17位数字加X
+          const idMatch = text.match(/\d{17}[\dXx]/);
+          if (idMatch) {
+            const idNumber = idMatch[0].toUpperCase();
+            $('#id-number').val(idNumber);
+            // 手动触发input事件以确保计算性别和年龄
+            $('#id-number').trigger('input');
+            // 自动将身份证号同步到编号
+            $('#cert-number').val(idNumber);
+          }
+        }).catch(err => {
+          console.error('无法读取剪贴板:', err);
+          alert('无法读取剪贴板内容，请手动粘贴后再点击此按钮');
+        });
+      });
+      
+      // 粘贴二维码图片功能
+      function setupPasteQrButton(buttonId, previewId) {
+        $(buttonId).click(async function() {
+          try {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const clipboardItem of clipboardItems) {
+              for (const type of clipboardItem.types) {
+                if (type.startsWith('image/')) {
+                  const blob = await clipboardItem.getType(type);
+                  const imageUrl = URL.createObjectURL(blob);
+                  
+                  if (buttonId === '#paste-qr-btn') {
+                    // 直接设置预览图片
+                    $(previewId).attr('src', imageUrl);
+                  } else {
+                    // 显示粘贴的图片并提供使用按钮
+                    $('#pasted-qr-image').attr('src', imageUrl);
+                    $('#pasted-qr-container').show();
+                  }
+                  return;
+                }
+              }
+            }
+            alert('剪贴板中没有找到图片');
+          } catch (err) {
+            console.error('无法读取剪贴板图片:', err);
+            alert('无法读取剪贴板中的图片，请确保您已复制了图片');
+          }
+        });
+      }
+      
+      setupPasteQrButton('#paste-qr-btn', '#preview-photo');
+      setupPasteQrButton('#paste-qr-btn-2', '#preview-photo');
+      
+      // 使用粘贴的二维码按钮
+      $('#use-pasted-qr-btn').click(function() {
+        $('#preview-photo').attr('src', $('#pasted-qr-image').attr('src'));
+        $('#pasted-qr-container').hide();
+        $('.tab').removeClass('active');
+        $('.tab-content').removeClass('active');
+        $('.tab[data-tab="preview"]').addClass('active');
+        $('#preview-tab').addClass('active');
+        updatePreview();
+      });
+    });
+  </script>
+</body>
+</html>
